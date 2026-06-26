@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 215 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+    --primary: 225 70% 35%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 28 93% 52%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 225 70% 35%;
+    --radius: 0.5rem;
+    --chart-1: 225 70% 35%;
+    --chart-2: 28 93% 52%;
+    --chart-3: 142 76% 36%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+
+    /* Brand colors from logo */
+    --brand-blue: #1B3C96;
+    --brand-blue-dark: #152D72;
+    --brand-blue-light: #2554C7;
+    --brand-orange: #F47319;
+    --brand-orange-dark: #D95E0B;
+    --brand-green: #3BB143;
+    --brand-yellow: #FFC107;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  /* Brand blue gradient — matches "Devis" in the logo */
+  .gradient-primary {
+    background: linear-gradient(135deg, #1B3C96 0%, #2554C7 100%);
+  }
+  .gradient-primary-hover {
+    background: linear-gradient(135deg, #152D72 0%, #1B3C96 100%);
+  }
+
+  /* Brand orange — matches "Simple" in the logo */
+  .gradient-accent {
+    background: linear-gradient(135deg, #D95E0B 0%, #F47319 100%);
+  }
+
+  /* Hero gradient */
+  .gradient-hero {
+    background: linear-gradient(135deg, #1B3C96 0%, #2554C7 60%, #3B82F6 100%);
+  }
+
+  /* Combined blue→orange brand gradient */
+  .gradient-brand {
+    background: linear-gradient(135deg, #1B3C96 0%, #F47319 100%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #1B3C96 0%, #2554C7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-orange {
+    background: linear-gradient(135deg, #D95E0B 0%, #F47319 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .card-hover {
+    transition: all 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(27, 60, 150, 0.12);
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-16px); }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes mic-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+    70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+  .animate-mic-pulse {
+    animation: mic-pulse 1.5s ease-out infinite;
+  }
+}
