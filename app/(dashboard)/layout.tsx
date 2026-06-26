@@ -24,6 +24,18 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Redirect admin users to the admin panel
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single();
+
+      if (userData?.is_admin) {
+        router.replace('/admin/candidatures');
+        return;
+      }
+
       setChecking(false);
     };
 
