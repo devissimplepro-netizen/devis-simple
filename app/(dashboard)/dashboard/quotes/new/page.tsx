@@ -178,7 +178,12 @@ export default function NewQuotePage() {
   const generateQuoteNumber = async () => {
     const year = new Date().getFullYear();
     const { data } = await supabase.rpc('generate_quote_number', { year });
-    return data;
+    if (data) return data;
+    const { count } = await supabase
+      .from('quotes')
+      .select('*', { count: 'exact', head: true });
+    const num = (count || 0) + 1;
+    return `D-${year}-${num.toString().padStart(4, '0')}`;
   };
 
   const handleSubmit = async (sendNow: boolean = false) => {

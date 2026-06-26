@@ -70,10 +70,13 @@ export function LandingFooter() {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-8">
-          <p className="text-center text-sm text-gray-400">
+        <div className="border-t border-gray-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-gray-400">
             © {new Date().getFullYear()} Devis Simple. Tous droits réservés.
           </p>
+          <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
+            Administration
+          </Link>
         </div>
       </div>
     </footer>
