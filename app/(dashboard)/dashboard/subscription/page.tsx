@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useDocumentLimit } from '@/hooks/use-document-limit';
+import { supabase } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,9 +23,20 @@ export default function SubscriptionPage() {
   const handleSubscribe = async () => {
     setLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expirée, reconnectez-vous');
+        return;
+      }
+
       const priceId = billingCycle === 'monthly'
-        ? (process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_monthly_pro')
-        : (process.env.NEXT_PUBLIC_STRIPE_PRICE_YEARLY || 'price_yearly_pro');
+        ? (process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || '')
+        : (process.env.NEXT_PUBLIC_STRIPE_PRICE_YEARLY || '');
+
+      if (!priceId) {
+        toast.error('Configuration Stripe manquante — contactez le support');
+        return;
+      }
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/stripe-checkout`,
@@ -32,7 +44,7 @@ export default function SubscriptionPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             price_id: priceId,
@@ -47,7 +59,7 @@ export default function SubscriptionPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        toast.error('Erreur lors de la redirection vers Stripe');
+        toast.error(data.error || 'Erreur lors de la redirection vers Stripe');
       }
     } catch (error: any) {
       toast.error(error.message || 'Erreur');
