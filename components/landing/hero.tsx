@@ -32,7 +32,7 @@ export function HeroSection() {
               </Button>
             </Link>
             <a
-              href="https://wa.me/33600000000?text=Bonjour%2C%20je%20souhaite%20candidater%20pour%20Devis%20Simple"
+              href="https://wa.me/33611761040?text=Bonjour%2C%20je%20souhaite%20candidater%20pour%20Devis%20Simple"
               target="_blank"
               rel="noopener noreferrer"
             >

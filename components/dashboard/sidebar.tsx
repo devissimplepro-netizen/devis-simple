@@ -22,6 +22,7 @@ import {
   BookOpen,
   X,
   Shield,
+  Bell,
 } from 'lucide-react';
 
 const navigation = [
@@ -34,6 +35,7 @@ const navigation = [
 ];
 
 const secondaryNavigation = [
+  { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
   { name: 'Abonnement', href: '/dashboard/subscription', icon: CreditCard },
   { name: 'Aide', href: 'https://aide.devis-simple.fr', icon: HelpCircle },
 ];

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle, MessageCircle, ArrowLeft } from 'lucide-react';
+import { Loader2, CheckCircle, MessageCircle, ArrowLeft, Upload, X } from 'lucide-react';
 import { TRADES } from '@/lib/constants';
+import { sendEmail, emailTemplates } from '@/lib/email';
 
 export default function CandidaturePage() {
   const [fullName, setFullName] = useState('');
@@ -22,8 +23,28 @@ export default function CandidaturePage() {
   const [companyName, setCompanyName] = useState('');
   const [siret, setSiret] = useState('');
   const [message, setMessage] = useState('');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Le logo ne doit pas dépasser 5 Mo');
+      return;
+    }
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
+      toast.error('Formats acceptés : PNG, JPG, WebP');
+      return;
+    }
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +55,18 @@ export default function CandidaturePage() {
 
     setLoading(true);
     try {
+      let logoUrl: string | null = null;
+
+      if (logoFile) {
+        const filePath = `candidatures/${email.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
+        const { error: uploadError } = await supabase.storage
+          .from('logos')
+          .upload(filePath, logoFile, { upsert: true });
+        if (uploadError) throw uploadError;
+        const { data: publicUrl } = supabase.storage.from('logos').getPublicUrl(filePath);
+        logoUrl = publicUrl.publicUrl;
+      }
+
       const { error } = await supabase.from('candidatures').insert({
         full_name: fullName,
         email,
@@ -42,11 +75,16 @@ export default function CandidaturePage() {
         company_name: companyName,
         siret,
         message,
+        logo_url: logoUrl,
       });
 
       if (error) throw error;
 
       setSuccess(true);
+
+      const template = emailTemplates.candidatureReceived(fullName);
+      await sendEmail(email, template.subject, template.html);
+
       setFullName('');
       setEmail('');
       setPhone('');
@@ -54,6 +92,8 @@ export default function CandidaturePage() {
       setCompanyName('');
       setSiret('');
       setMessage('');
+      setLogoFile(null);
+      setLogoPreview(null);
     } catch (error: any) {
       toast.error(error.message || 'Erreur lors de l\'envoi de la candidature');
     } finally {
@@ -102,7 +142,7 @@ export default function CandidaturePage() {
               <p className="text-sm font-medium text-blue-900">Préférez WhatsApp ?</p>
               <p className="text-sm text-blue-700">
                 <a
-                  href="https://wa.me/33600000000?text=Bonjour%2C%20je%20souhaite%20candidater%20pour%20Devis%20Simple"
+                  href="https://wa.me/33611761040?text=Bonjour%2C%20je%20souhaite%20candidater%20pour%20Devis%20Simple"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline"
@@ -128,29 +168,32 @@ export default function CandidaturePage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Nom complet *</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Jean Dupont"
-                    required
-                    className="h-12"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="votre@email.com"
-                    required
-                    className="h-12"
-                  />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Informations personnelles</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Nom complet *</Label>
+                    <Input
+                      id="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Jean Dupont"
+                      required
+                      className="h-12"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="votre@email.com"
+                      required
+                      className="h-12"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -162,7 +205,7 @@ export default function CandidaturePage() {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="06 12 34 56 78"
+                    placeholder="06 11 76 10 40"
                     required
                     className="h-12"
                   />
@@ -182,26 +225,29 @@ export default function CandidaturePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Nom de l'entreprise</Label>
-                  <Input
-                    id="companyName"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="Dupont SARL"
-                    className="h-12"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="siret">SIRET</Label>
-                  <Input
-                    id="siret"
-                    value={siret}
-                    onChange={(e) => setSiret(e.target.value)}
-                    placeholder="123 456 789 00012"
-                    className="h-12"
-                  />
+              <div className="pt-4 border-t border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Informations entreprise</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">Nom de l'entreprise</Label>
+                    <Input
+                      id="companyName"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      placeholder="Dupont SARL"
+                      className="h-12"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="siret">SIRET</Label>
+                    <Input
+                      id="siret"
+                      value={siret}
+                      onChange={(e) => setSiret(e.target.value)}
+                      placeholder="123 456 789 00012"
+                      className="h-12"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -214,6 +260,44 @@ export default function CandidaturePage() {
                   placeholder="Parlez-nous de votre activité et de vos besoins..."
                   rows={4}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Logo de l'entreprise</Label>
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-blue-500 transition-colors overflow-hidden"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {logoPreview ? (
+                      <Image src={logoPreview} alt="Logo preview" width={96} height={96} className="object-contain" />
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+                        <span className="text-xs text-gray-500">Logo</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      className="hidden"
+                      onChange={handleLogoChange}
+                    />
+                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="mb-1">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Choisir un fichier
+                    </Button>
+                    <p className="text-xs text-gray-500">PNG, JPG, WebP — max 5 Mo</p>
+                  </div>
+                  {logoPreview && (
+                    <button type="button" onClick={() => { setLogoFile(null); setLogoPreview(null); }} className="text-gray-400 hover:text-red-500">
+                      <X className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <Button
