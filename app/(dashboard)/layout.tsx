@@ -2,57 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardHeader } from '@/components/dashboard/header';
 import { Loader2 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
-  const [checking, setChecking] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    if (loading) return;
 
-      if (!session) {
-        router.push('/login');
-        return;
-      }
+    if (!user) {
+      router.push('/login');
+      return;
+    }
 
-      // Redirect admin users to the admin panel
-      const { data: userData } = await supabase
-        .from('users')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
+    if (isAdmin) {
+      router.replace('/admin/candidatures');
+    }
+  }, [user, isAdmin, loading, router]);
 
-      if (userData?.is_admin) {
-        router.replace('/admin/candidatures');
-        return;
-      }
-
-      setChecking(false);
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        router.push('/login');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
-
-  if (checking || loading) {
+  if (loading || !user || isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -60,13 +33,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -74,7 +42,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      {/* Sidebar — fixed on mobile, flex item on desktop */}
       <div
         className={`
           fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
@@ -84,11 +51,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       >
         <DashboardSidebar
           onClose={() => setSidebarOpen(false)}
-          onCollapsedChange={setSidebarCollapsed}
+          onCollapsedChange={() => {}}
         />
       </div>
 
-      {/* Main content — grows to fill remaining space */}
       <div className="flex-1 min-w-0 flex flex-col min-h-screen">
         <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 p-4 sm:p-6 overflow-auto">

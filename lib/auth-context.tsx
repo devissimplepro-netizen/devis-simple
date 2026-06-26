@@ -26,93 +26,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const fetchUser = async () => {
+  const loadUserData = async (userId: string) => {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
 
-      if (authUser) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', authUser.id)
-          .single();
+      setUser(userData ?? null);
+      setIsAdmin(userData?.is_admin ?? false);
 
-        setUser(userData);
-        setIsAdmin(userData?.is_admin ?? false);
-
-        if (userData) {
-          const { data: companyData } = await supabase
-            .from('companies')
-            .select('*')
-            .eq('user_id', userData.id)
-            .single();
-
-          setCompany(companyData);
-
-          const { data: subData } = await supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', userData.id)
-            .single();
-
-          setSubscription(subData);
-        }
+      if (userData) {
+        const [{ data: companyData }, { data: subData }] = await Promise.all([
+          supabase.from('companies').select('*').eq('user_id', userId).maybeSingle(),
+          supabase.from('subscriptions').select('*').eq('user_id', userId).maybeSingle(),
+        ]);
+        setCompany(companyData ?? null);
+        setSubscription(subData ?? null);
       }
-    } catch (error) {
-      console.error('Error fetching user:', error);
+    } catch (err) {
+      console.error('loadUserData error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  const clearUser = () => {
+    setUser(null);
+    setCompany(null);
+    setSubscription(null);
+    setIsAdmin(false);
+  };
+
   const refreshUser = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
-      const { data } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-      setUser(data);
+      const { data } = await supabase.from('users').select('*').eq('id', authUser.id).maybeSingle();
+      setUser(data ?? null);
+      setIsAdmin(data?.is_admin ?? false);
     }
   };
 
   const refreshCompany = async () => {
     if (user) {
-      const { data } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      setCompany(data);
+      const { data } = await supabase.from('companies').select('*').eq('user_id', user.id).maybeSingle();
+      setCompany(data ?? null);
     }
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setCompany(null);
-    setSubscription(null);
+    clearUser();
     router.push('/');
   };
 
   useEffect(() => {
-    fetchUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event) => {
-        if (event === 'SIGNED_IN') {
-          fetchUser();
+    // Use onAuthStateChange exclusively — calling getUser() concurrently causes a deadlock
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (session?.user) {
+            await loadUserData(session.user.id);
+          } else {
+            clearUser();
+            setLoading(false);
+          }
         } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setCompany(null);
-          setSubscription(null);
+          clearUser();
+          setLoading(false);
         }
       }
     );
 
     return () => {
-      subscription.unsubscribe();
+      authSub.unsubscribe();
     };
   }, []);
 
