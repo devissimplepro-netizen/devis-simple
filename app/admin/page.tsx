@@ -28,13 +28,7 @@ export default function AdminPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      const { data: userData } = await supabase
-        .from('users')
-        .select('is_admin')
-        .eq('id', data.user.id)
-        .single();
-
-      if (!userData?.is_admin) {
+      if (data.user.email?.toLowerCase() !== ADMIN_EMAIL) {
         await supabase.auth.signOut();
         throw new Error('Accès non autorisé');
       }
