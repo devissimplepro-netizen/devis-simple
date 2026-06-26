@@ -68,7 +68,7 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
         value={formatCurrency(stats.revenue)}
         description="Ce mois"
         icon={TrendingUp}
-        iconBg="bg-indigo-500"
+        iconBg="bg-blue-600"
       />
       <StatCard
         title="Taux d'acceptation"

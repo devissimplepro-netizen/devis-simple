@@ -11,7 +11,7 @@ const actions = [
     description: 'Nouveau devis en quelques clics',
     icon: FileText,
     href: '/dashboard/quotes/new',
-    color: 'bg-blue-500',
+    color: 'bg-blue-600',
   },
   {
     title: 'Créer une facture',
@@ -25,14 +25,14 @@ const actions = [
     description: 'Enregistrer un nouveau client',
     icon: Users,
     href: '/dashboard/clients/new',
-    color: 'bg-indigo-500',
+    color: 'bg-teal-500',
   },
   {
     title: 'Devis vocal',
     description: 'Créer avec l\'IA vocale',
     icon: Mic,
     href: '/dashboard/quotes/voice',
-    color: 'bg-purple-500',
+    color: 'bg-sky-500',
   },
 ];
 

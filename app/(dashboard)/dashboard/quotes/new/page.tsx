@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Client, Prestation } from '@/lib/types';
+import { useDocumentLimit } from '@/hooks/use-document-limit';
+import { Lock } from 'lucide-react';
 
 interface QuoteItem {
   id?: string;
@@ -36,6 +38,7 @@ interface QuoteItem {
 }
 
 export default function NewQuotePage() {
+  const { isLimited, count, limit, loading: limitLoading } = useDocumentLimit();
   const [clients, setClients] = useState<Client[]>([]);
   const [prestations, setPrestations] = useState<Prestation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -297,6 +300,23 @@ export default function NewQuotePage() {
         <p className="text-gray-600">Créez un devis professionnel en quelques clics</p>
       </div>
 
+      {isLimited && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 flex gap-4 items-start">
+          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <Lock className="h-5 w-5 text-amber-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-amber-900">Limite atteinte — {count}/{limit} documents</p>
+            <p className="text-sm text-amber-700 mt-1">
+              Le forfait gratuit est limité à {limit} devis et factures au total. Passez en Pro pour créer des documents illimités.
+            </p>
+            <Link href="/dashboard/subscription" className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-amber-800 hover:text-amber-900 underline underline-offset-2">
+              Voir les offres
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card>
@@ -475,7 +495,7 @@ export default function NewQuotePage() {
             </Card>
 
             <div className="space-y-3">
-              <Button className="w-full gradient-primary text-white" onClick={() => handleSubmit(true)} disabled={saving}>
+              <Button className="w-full gradient-primary text-white" onClick={() => handleSubmit(true)} disabled={saving || isLimited}>
                 {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -488,7 +508,7 @@ export default function NewQuotePage() {
                   </>
                 )}
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => handleSubmit(false)} disabled={saving}>
+              <Button variant="outline" className="w-full" onClick={() => handleSubmit(false)} disabled={saving || isLimited}>
                 <Save className="mr-2 h-4 w-4" />
                 Enregistrer en brouillon
               </Button>

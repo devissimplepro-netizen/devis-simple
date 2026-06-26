@@ -13,6 +13,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -52,8 +53,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile sidebar overlay */}
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -61,17 +62,22 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out
-        lg:relative lg:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <DashboardSidebar onClose={() => setSidebarOpen(false)} />
+      {/* Sidebar — fixed on mobile, flex item on desktop */}
+      <div
+        className={`
+          fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
+          lg:static lg:translate-x-0 lg:z-auto flex-shrink-0
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        <DashboardSidebar
+          onClose={() => setSidebarOpen(false)}
+          onCollapsedChange={setSidebarCollapsed}
+        />
       </div>
 
-      {/* Main content */}
-      <div className="lg:ml-64 min-h-screen flex flex-col flex-1">
+      {/* Main content — grows to fill remaining space */}
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
         <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 p-4 sm:p-6 overflow-auto">
           {children}

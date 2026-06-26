@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useDocumentLimit } from '@/hooks/use-document-limit';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,14 +47,22 @@ const adminNavigation = [
 
 interface DashboardSidebarProps {
   onClose?: () => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
-export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
+export function DashboardSidebar({ onClose, onCollapsedChange }: DashboardSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const { signOut, company, isAdmin } = useAuth();
+  const { signOut, company, isAdmin, subscription } = useAuth();
 
   const primaryColor = company?.primary_color || '#1E40AF';
+  const { count, limit, isLimited } = useDocumentLimit();
+  const isPro = subscription?.plan === 'pro' && subscription?.status !== 'canceled';
+
+  const handleCollapse = (next: boolean) => {
+    setCollapsed(next);
+    onCollapsedChange?.(next);
+  };
 
   const handleLinkClick = () => {
     if (onClose) onClose();
@@ -90,7 +99,7 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
           </button>
           {/* Desktop collapse button */}
           <button
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => handleCollapse(!collapsed)}
             className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hidden lg:flex"
           >
             {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
@@ -190,6 +199,33 @@ export function DashboardSidebar({ onClose }: DashboardSidebarProps) {
           })}
         </div>
       </nav>
+
+      {/* Document usage for free plan */}
+      {!collapsed && !isPro && (
+        <div className="px-4 pb-3">
+          <Link href="/dashboard/subscription">
+            <div className={`rounded-lg p-3 transition-colors ${isLimited ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'} hover:opacity-90`}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className={`text-xs font-medium ${isLimited ? 'text-amber-700' : 'text-gray-600'}`}>
+                  Documents
+                </span>
+                <span className={`text-xs font-semibold ${isLimited ? 'text-amber-700' : 'text-gray-700'}`}>
+                  {count}/{limit}
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${isLimited ? 'bg-amber-500' : 'bg-blue-500'}`}
+                  style={{ width: `${Math.min(100, (count / limit) * 100)}%` }}
+                />
+              </div>
+              {isLimited && (
+                <p className="text-xs text-amber-600 mt-1.5 font-medium">Passer en Pro →</p>
+              )}
+            </div>
+          </Link>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-200 flex-shrink-0">
