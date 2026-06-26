@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { useDocumentLimit } from '@/hooks/use-document-limit';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, CreditCard, Calendar, Sparkles, ExternalLink } from 'lucide-react';
+import { Check, CreditCard, Sparkles, ExternalLink, FileText, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SubscriptionPage() {
   const { subscription, user } = useAuth();
+  const { count, limit, isLimited } = useDocumentLimit();
   const [loading, setLoading] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
@@ -69,7 +71,7 @@ export default function SubscriptionPage() {
 
   const isTrialing = subscription?.status === 'trialing';
   const isActive = subscription?.status === 'active';
-  const isPaid = isActive || isTrialing;
+  const isPaid = isActive;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 px-4 sm:px-0">
@@ -93,13 +95,13 @@ export default function SubscriptionPage() {
                 <Badge className="bg-blue-600 text-white text-xs">
                   {subscription?.billing_cycle === 'yearly' ? 'Annuel' : 'Mensuel'}
                 </Badge>
-                {isTrialing && (
-                  <Badge className="bg-green-600 text-white text-xs">Période d'essai</Badge>
-                )}
                 {isActive && (
                   <Badge className="bg-green-600 text-white text-xs">Actif</Badge>
                 )}
-                {!isPaid && (
+                {isTrialing && (
+                  <Badge className="bg-orange-500 text-white text-xs">Accès gratuit</Badge>
+                )}
+                {!isPaid && !isTrialing && (
                   <Badge className="bg-red-600 text-white text-xs">Inactif</Badge>
                 )}
               </div>
@@ -138,19 +140,46 @@ export default function SubscriptionPage() {
             </ul>
           </div>
 
-          {subscription?.current_period_end && (
+          {isTrialing && (
             <div className="pt-4 sm:pt-6 border-t">
-              <div className="flex items-center gap-2 text-gray-600 text-sm">
-                <Calendar className="h-4 w-4" />
-                <span>
-                  {isTrialing ? 'Fin de l\'essai : ' : 'Prochain renouvellement : '}
-                  {new Date(subscription.current_period_end).toLocaleDateString('fr-FR', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                </span>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2 font-medium text-gray-700">
+                    <FileText className="h-4 w-4" />
+                    Documents gratuits utilisés
+                  </div>
+                  <span className={`font-bold ${isLimited ? 'text-red-600' : 'text-gray-900'}`}>
+                    {count}/{limit}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all ${isLimited ? 'bg-red-500' : count >= limit - 1 ? 'bg-orange-500' : 'bg-blue-600'}`}
+                    style={{ width: `${Math.min((count / limit) * 100, 100)}%` }}
+                  />
+                </div>
+                {isLimited ? (
+                  <div className="flex items-center gap-2 text-sm text-red-600 font-medium">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    Limite atteinte — abonnez-vous pour créer des documents illimités
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">
+                    {limit - count} document{limit - count > 1 ? 's' : ''} gratuit{limit - count > 1 ? 's' : ''} restant{limit - count > 1 ? 's' : ''} — abonnez-vous pour un accès illimité
+                  </p>
+                )}
               </div>
+            </div>
+          )}
+
+          {isActive && subscription?.current_period_end && (
+            <div className="pt-4 sm:pt-6 border-t">
+              <p className="text-sm text-gray-600">
+                Prochain renouvellement :{' '}
+                {new Date(subscription.current_period_end).toLocaleDateString('fr-FR', {
+                  day: 'numeric', month: 'long', year: 'numeric',
+                })}
+              </p>
             </div>
           )}
         </CardContent>
