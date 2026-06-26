@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, MoreHorizontal, Eye, Send, FileText, Copy, Loader2 } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Eye, Send, FileText, MessageCircle, Mail, Copy, Loader2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 interface InvoiceWithClient {
   id: string;
@@ -88,10 +88,22 @@ export default function InvoicesPage() {
     }
   };
 
+  const shareLink = (token: string) => `${window.location.origin}/i/${token}`;
+
   const copyShareLink = (shareToken: string) => {
-    const link = `${window.location.origin}/i/${shareToken}`;
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(shareLink(shareToken));
     toast.success('Lien copié dans le presse-papier');
+  };
+
+  const shareWhatsApp = (invoice: InvoiceWithClient) => {
+    const text = encodeURIComponent(`Voici votre facture ${invoice.number} : ${shareLink(invoice.share_token)}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  const shareEmail = (invoice: InvoiceWithClient) => {
+    const subject = encodeURIComponent(`Facture ${invoice.number}`);
+    const body = encodeURIComponent(`Bonjour,\n\nVeuillez consulter votre facture via ce lien :\n${shareLink(invoice.share_token)}\n\nCordialement`);
+    window.open(`mailto:?subject=${subject}&body=${body}`);
   };
 
   const formatCurrency = (value: number) => {
@@ -113,10 +125,10 @@ export default function InvoicesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Factures</h1>
           <p className="text-gray-600">Gérez toutes vos factures</p>
         </div>
-        <Link href="/dashboard/invoices/new">
-          <Button className="gradient-primary text-white">
-            <Plus className="mr-2 h-4 w-4" />
-            Nouvelle facture
+        <Link href="/dashboard/quotes">
+          <Button variant="outline" className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-blue-600" />
+            Créer via un devis accepté
           </Button>
         </Link>
       </div>
@@ -163,7 +175,8 @@ export default function InvoicesPage() {
                     <TableHead>Montant TTC</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead className="w-12"></TableHead>
+                    <TableHead>Partager</TableHead>
+                    <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -177,8 +190,24 @@ export default function InvoicesPage() {
                           {statusLabels[invoice.status]}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-sm text-gray-500">
                         {new Date(invoice.created_at).toLocaleDateString('fr-FR')}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
+                            title="Aperçu" onClick={() => window.open(shareLink(invoice.share_token), '_blank')}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
+                            title="WhatsApp" onClick={() => shareWhatsApp(invoice)}>
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-blue-500 hover:bg-blue-50"
+                            title="Email" onClick={() => shareEmail(invoice)}>
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>

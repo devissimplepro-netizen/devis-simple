@@ -38,7 +38,7 @@ const navigation = [
 const secondaryNavigation = [
   { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
   { name: 'Abonnement', href: '/dashboard/subscription', icon: CreditCard },
-  { name: 'Aide', href: 'https://aide.devis-simple.fr', icon: HelpCircle },
+  { name: 'Aide (WhatsApp)', href: 'https://wa.me/33611761040', icon: HelpCircle },
 ];
 
 const adminNavigation = [

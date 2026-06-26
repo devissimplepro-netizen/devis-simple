@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase/client';
 import { Loader2, Shield } from 'lucide-react';
 import { toast } from 'sonner';
-import Image from 'next/image';
+
+const ADMIN_EMAIL = 'mohaa-elamri@hotmail.com';
 
 export default function AdminPage() {
   const [email, setEmail] = useState('');
@@ -20,13 +21,26 @@ export default function AdminPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email || 'mohaa-elamri@hotmail.com',
-        password: password || 'M19962006m!',
-      });
+      if (email.trim().toLowerCase() !== ADMIN_EMAIL) {
+        throw new Error('Accès non autorisé');
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      toast.success('Connecte en tant qu\'admin');
-      router.push('/dashboard/admin/candidatures');
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', data.user.id)
+        .single();
+
+      if (!userData?.is_admin) {
+        await supabase.auth.signOut();
+        throw new Error('Accès non autorisé');
+      }
+
+      toast.success('Connecté en tant qu\'admin');
+      router.push('/admin/candidatures');
     } catch (error: any) {
       toast.error(error.message || 'Erreur de connexion');
     } finally {
@@ -41,7 +55,7 @@ export default function AdminPage() {
           <Shield className="h-8 w-8 text-blue-600" />
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Administration</h1>
-        <p className="text-gray-600 mb-6">Connectez-vous pour gerer les candidatures</p>
+        <p className="text-gray-500 mb-8 text-sm">Espace réservé à l'administrateur</p>
 
         <form onSubmit={handleLogin} className="space-y-4 text-left">
           <div className="space-y-2">
@@ -54,6 +68,7 @@ export default function AdminPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="h-12"
               autoComplete="email"
+              required
             />
           </div>
           <div className="space-y-2">
@@ -61,28 +76,23 @@ export default function AdminPage() {
             <Input
               id="admin-password"
               type="password"
-              placeholder="******"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="h-12"
               autoComplete="current-password"
+              required
             />
           </div>
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-12 gradient-primary text-white"
+            className="w-full h-12 gradient-primary text-white mt-2"
           >
             {loading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Connexion...
-              </>
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Connexion...</>
             ) : (
-              <>
-                <Shield className="mr-2 h-5 w-5" />
-                Se connecter
-              </>
+              <><Shield className="mr-2 h-5 w-5" />Se connecter</>
             )}
           </Button>
         </form>
