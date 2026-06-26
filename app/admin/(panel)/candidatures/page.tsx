@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Loader2, CheckCircle, XCircle, Trash2, Mail, Phone, UserPlus,
   KeyRound, Copy, Upload, X, Image as ImageIcon, MessageSquare,
-  Users, CreditCard, Crown, AlertCircle,
+  Users, CreditCard, Crown, AlertCircle, RefreshCw, Eye, EyeOff,
 } from 'lucide-react';
 import { TRADES } from '@/lib/constants';
 import Image from 'next/image';
@@ -172,6 +172,8 @@ export default function AdminCandidaturesPage() {
   const [newIsSubscribed, setNewIsSubscribed] = useState(false);
   const [newLogoFile, setNewLogoFile] = useState<File | null>(null);
   const [newLogoPreview, setNewLogoPreview] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => { fetchCandidatures(); fetchArtisans(); }, []);
 
@@ -297,14 +299,14 @@ export default function AdminCandidaturesPage() {
     try {
       let logoUrl: string | null = null;
       if (newLogoFile) {
-        const filePath = `logos/${newEmail.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
+        const filePath = `${newEmail.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
         const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, newLogoFile, { upsert: true });
         if (uploadError) throw uploadError;
         const { data: pub } = supabase.storage.from('logos').getPublicUrl(filePath);
         logoUrl = pub.publicUrl;
       }
 
-      const password = generatePassword();
+      const password = newPassword || generatePassword();
       await callCreateArtisan({
         email: newEmail, password, full_name: newFullName,
         phone: newPhone, trade: newTrade,
@@ -318,6 +320,7 @@ export default function AdminCandidaturesPage() {
       setNewFullName(''); setNewEmail(''); setNewPhone(''); setNewTrade('');
       setNewCompanyName(''); setNewSiret(''); setNewAddress(''); setNewCity('');
       setNewPostalCode(''); setNewIsSubscribed(false); setNewLogoFile(null); setNewLogoPreview(null);
+      setNewPassword(generatePassword()); setShowPassword(false);
       toast.success('Artisan créé');
       const template = emailTemplates.candidatureApproved(newFullName, newEmail, password);
       await sendEmail(newEmail, template.subject, template.html);
@@ -365,7 +368,7 @@ export default function AdminCandidaturesPage() {
             <Badge className="bg-yellow-100 text-yellow-700">{pending} en attente</Badge>
             <Badge className="bg-green-100 text-green-700">{artisans.length} artisans</Badge>
           </div>
-          <Button onClick={() => setCreateDialog(true)} className="gradient-primary text-white">
+          <Button onClick={() => { setNewPassword(generatePassword()); setShowPassword(false); setCreateDialog(true); }} className="gradient-primary text-white">
             <UserPlus className="h-4 w-4 mr-2" />Créer un artisan
           </Button>
         </div>
@@ -623,6 +626,46 @@ export default function AdminCandidaturesPage() {
             <div className="flex items-center gap-2">
               <input type="checkbox" id="subscribed" checked={newIsSubscribed} onChange={e => setNewIsSubscribed(e.target.checked)} className="h-4 w-4 rounded" />
               <Label htmlFor="subscribed" className="text-sm font-normal cursor-pointer">Artisan abonné (paiement actif)</Label>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Mot de passe *</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    required
+                    className="pr-10 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewPassword(generatePassword())}
+                  className="flex-shrink-0"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" />Générer
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { navigator.clipboard.writeText(newPassword); toast.success('Mot de passe copié'); }}
+                  className="flex-shrink-0"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
 
             <Button type="submit" disabled={createLoading} className="w-full gradient-primary text-white">
