@@ -178,12 +178,15 @@ export function DashboardSidebar({ onClose, onCollapsedChange }: DashboardSideba
 
         <div className="pt-4 mt-4 border-t border-gray-200 space-y-0.5">
           {secondaryNavigation.map((item) => {
-            const isActive = pathname === item.href;
+            const isExternal = item.href.startsWith('http');
+            const isActive = !isExternal && pathname === item.href;
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 onClick={handleLinkClick}
+                target={isExternal ? '_blank' : undefined}
+                rel={isExternal ? 'noopener noreferrer' : undefined}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium',
                   isActive
