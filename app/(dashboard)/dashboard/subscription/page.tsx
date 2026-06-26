@@ -21,8 +21,8 @@ export default function SubscriptionPage() {
     setLoading(true);
     try {
       const priceId = billingCycle === 'monthly'
-        ? 'price_monthly_pro'
-        : 'price_yearly_pro';
+        ? (process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_monthly_pro')
+        : (process.env.NEXT_PUBLIC_STRIPE_PRICE_YEARLY || 'price_yearly_pro');
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/stripe-checkout`,

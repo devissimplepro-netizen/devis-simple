@@ -25,16 +25,6 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         router.replace('/admin');
         return;
       }
-      const { data: userData } = await supabase
-        .from('users')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
-      if (!userData?.is_admin) {
-        await supabase.auth.signOut();
-        router.replace('/admin');
-        return;
-      }
       setChecking(false);
     };
     check();
