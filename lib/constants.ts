@@ -51,11 +51,11 @@ export const STATUS_COLORS = {
 } as const;
 
 export const PDF_TEMPLATES = [
-  { id: 1, name: 'Classique', description: 'Design traditionnel et professionnel' },
-  { id: 2, name: 'Moderne', description: 'Style épuré et contemporain' },
-  { id: 3, name: 'Premium', description: 'Look haut de gamme avec accents dorés' },
-  { id: 4, name: 'Minimaliste', description: 'Simple et efficace' },
-  { id: 5, name: 'Bâtiment', description: 'Adapté aux artisans du bâtiment' },
+  { id: 1, name: 'Classique', description: 'Design traditionnel et professionnel', color: 'bg-blue-50' },
+  { id: 2, name: 'Moderne', description: 'Style épuré et contemporain', color: 'bg-gray-50' },
+  { id: 3, name: 'Premium', description: 'Look haut de gamme', color: 'bg-amber-50' },
+  { id: 4, name: 'Minimaliste', description: 'Simple et efficace', color: 'bg-white' },
+  { id: 5, name: 'Bâtiment', description: 'Adapté aux artisans du bâtiment', color: 'bg-orange-50' },
 ] as const;
 
 export const DEFAULT_TVA_RATES = [20, 10, 5.5, 2.1] as const;

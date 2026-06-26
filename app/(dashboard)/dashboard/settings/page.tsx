@@ -12,9 +12,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UpgradeModal, ProBadge } from '@/components/ui/upgrade-modal';
 import { hasFeature, UPGRADE_MESSAGES } from '@/lib/plan-features';
-import { Loader2, Save, Upload, Check, Lock } from 'lucide-react';
+import { Loader2, Save, Upload, Check, Lock, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { PDF_TEMPLATES } from '@/lib/constants';
+import { PDFPreviewModal } from '@/components/pdf-preview-modal';
 
 const defaultColors = [
   { primary: '#1E40AF', secondary: '#3B82F6', name: 'Bleu professionnel' },
@@ -30,6 +31,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; feature: string }>({ open: false, feature: 'default' });
+  const [previewModal, setPreviewModal] = useState<{ open: boolean; templateId: number; templateName: string }>({ open: false, templateId: 1, templateName: '' });
 
   const plan = subscription?.plan || 'starter';
   const isPro = hasFeature(plan as any, 'pro');
@@ -498,9 +500,8 @@ export default function SettingsPage() {
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {PDF_TEMPLATES.map((template) => (
-                      <button
+                      <div
                         key={template.id}
-                        onClick={() => updateField('pdf_template', template.id)}
                         className={`p-4 rounded-lg border-2 text-left transition-all ${
                           formData.pdf_template === template.id
                             ? 'border-blue-600 ring-2 ring-blue-200'
@@ -513,8 +514,23 @@ export default function SettingsPage() {
                             <Check className="h-5 w-5 text-blue-600" />
                           )}
                         </div>
-                        <p className="text-sm text-gray-500">{template.description}</p>
-                      </button>
+                        <p className="text-sm text-gray-500 mb-3">{template.description}</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => updateField('pdf_template', template.id)}
+                            className="flex-1 py-2 px-3 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                          >
+                            Sélectionner
+                          </button>
+                          <button
+                            onClick={() => setPreviewModal({ open: true, templateId: template.id, templateName: template.name })}
+                            className="flex items-center gap-1 py-2 px-3 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            Aperçu
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </>
@@ -555,6 +571,13 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <PDFPreviewModal
+        templateId={previewModal.templateId}
+        templateName={previewModal.templateName}
+        open={previewModal.open}
+        onOpenChange={(open) => setPreviewModal({ ...previewModal, open })}
+      />
     </div>
   );
 }

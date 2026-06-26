@@ -16,12 +16,15 @@ import {
   Loader2,
   Plus,
   Trash2,
-  Calculator,
   Save,
   Send,
+  Eye,
+  MessageCircle,
+  Mail,
+  BookOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Client } from '@/lib/types';
+import type { Client, Prestation } from '@/lib/types';
 
 interface QuoteItem {
   id?: string;
@@ -34,6 +37,7 @@ interface QuoteItem {
 
 export default function NewQuotePage() {
   const [clients, setClients] = useState<Client[]>([]);
+  const [prestations, setPrestations] = useState<Prestation[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -46,53 +50,70 @@ export default function NewQuotePage() {
     { description: '', quantity: 1, unit_price: 0, tva_rate: 20, total: 0 },
   ]);
   const [company, setCompany] = useState<any>(null);
+  const [quoteId, setQuoteId] = useState<string | null>(null);
+  const [shareToken, setShareToken] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     fetchClients();
+    fetchPrestations();
     fetchCompany();
   }, []);
 
   const fetchClients = async () => {
-    setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
       const { data: companyData } = await supabase
         .from('companies')
         .select('id, tva_rate')
         .eq('user_id', user.id)
         .single();
-
       if (companyData) {
         setCompany(companyData);
-
         const { data } = await supabase
           .from('clients')
           .select('*')
           .eq('company_id', companyData.id)
           .order('name');
-
         setClients(data || []);
       }
     } catch (error) {
       console.error('Error:', error);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchPrestations = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      if (companyData) {
+        const { data } = await supabase
+          .from('prestations')
+          .select('*')
+          .eq('company_id', companyData.id)
+          .eq('is_active', true)
+          .order('name');
+        setPrestations(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching prestations:', error);
     }
   };
 
   const fetchCompany = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
     const { data } = await supabase
       .from('companies')
       .select('*')
       .eq('user_id', user.id)
       .single();
-
     setCompany(data);
   };
 
@@ -107,9 +128,11 @@ export default function NewQuotePage() {
         ...newItems[index],
         [field]: value,
       };
-      newItems[index].total = Number(
-        (newItems[index].quantity * newItems[index].unit_price).toFixed(2)
-      );
+      if (field === 'quantity' || field === 'unit_price') {
+        newItems[index].total = Number(
+          (newItems[index].quantity * newItems[index].unit_price).toFixed(2)
+        );
+      }
       return newItems;
     });
   };
@@ -125,6 +148,21 @@ export default function NewQuotePage() {
     if (items.length > 1) {
       setItems((prev) => prev.filter((_, i) => i !== index));
     }
+  };
+
+  const addPrestation = (prestationId: string) => {
+    const prestation = prestations.find((p) => p.id === prestationId);
+    if (!prestation) return;
+    setItems((prev) => [
+      ...prev,
+      {
+        description: prestation.name,
+        quantity: 1,
+        unit_price: prestation.default_price,
+        tva_rate: prestation.tva_rate,
+        total: prestation.default_price,
+      },
+    ]);
   };
 
   const calculateTotals = () => {
@@ -148,30 +186,23 @@ export default function NewQuotePage() {
       toast.error('Veuillez sélectionner un client');
       return;
     }
-
     const validItems = items.filter((item) => item.description && item.quantity > 0);
     if (validItems.length === 0) {
       toast.error('Veuillez ajouter au moins une prestation');
       return;
     }
-
     setSaving(true);
-
     try {
       const number = await generateQuoteNumber();
       const totals = calculateTotals();
-
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
-
       const { data: companyData } = await supabase
         .from('companies')
         .select('id')
         .eq('user_id', user.id)
         .single();
-
       if (!companyData) throw new Error('Entreprise non trouvée');
-
       const { data: quote, error } = await supabase
         .from('quotes')
         .insert({
@@ -188,10 +219,10 @@ export default function NewQuotePage() {
         })
         .select()
         .single();
-
       if (error) throw error;
-
       if (quote) {
+        setQuoteId(quote.id);
+        setShareToken(quote.share_token);
         const itemsToInsert = validItems.map((item, index) => ({
           quote_id: quote.id,
           description: item.description,
@@ -201,15 +232,12 @@ export default function NewQuotePage() {
           total: item.total,
           order: index,
         }));
-
-        const { error: itemsError } = await supabase
-          .from('quote_items')
-          .insert(itemsToInsert);
-
+        const { error: itemsError } = await supabase.from('quote_items').insert(itemsToInsert);
         if (itemsError) throw itemsError;
-
         toast.success(sendNow ? 'Devis envoyé' : 'Devis créé');
-        router.push('/dashboard/quotes');
+        if (sendNow) {
+          router.push('/dashboard/quotes');
+        }
       }
     } catch (error: any) {
       toast.error(error.message || 'Erreur lors de la création');
@@ -218,11 +246,37 @@ export default function NewQuotePage() {
     }
   };
 
+  const shareLink = () => {
+    if (!shareToken) return '';
+    return `${window.location.origin}/q/${shareToken}`;
+  };
+
+  const copyShareLink = () => {
+    if (!quoteId) return;
+    navigator.clipboard.writeText(shareLink());
+    toast.success('Lien copié');
+  };
+
+  const shareWhatsApp = () => {
+    if (!quoteId) return;
+    const text = encodeURIComponent(`Voici votre devis : ${shareLink()}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  const shareEmail = () => {
+    if (!quoteId) return;
+    const subject = encodeURIComponent('Votre devis');
+    const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver votre devis via ce lien :\n${shareLink()}\n\nCordialement`);
+    window.open(`mailto:?subject=${subject}&body=${body}`);
+  };
+
+  const previewPDF = () => {
+    if (!quoteId) return;
+    window.open(shareLink(), '_blank');
+  };
+
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(value);
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
   };
 
   const totals = calculateTotals();
@@ -248,10 +302,7 @@ export default function NewQuotePage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Sélectionner un client</Label>
-                  <Select
-                    value={formData.client_id}
-                    onValueChange={(value) => updateField('client_id', value)}
-                  >
+                  <Select value={formData.client_id} onValueChange={(value) => updateField('client_id', value)}>
                     <SelectTrigger className="h-12">
                       <SelectValue placeholder="Choisir un client" />
                     </SelectTrigger>
@@ -280,10 +331,27 @@ export default function NewQuotePage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Prestations</CardTitle>
-              <Button variant="outline" size="sm" onClick={addItem}>
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter
-              </Button>
+              <div className="flex items-center gap-2">
+                {prestations.length > 0 && (
+                  <Select onValueChange={addPrestation}>
+                    <SelectTrigger className="w-48 h-9">
+                      <BookOpen className="h-4 w-4 mr-2 text-gray-500" />
+                      <SelectValue placeholder="Ajouter prestation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {prestations.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name} — {formatCurrency(p.default_price)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button variant="outline" size="sm" onClick={addItem}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Ajouter
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -319,10 +387,7 @@ export default function NewQuotePage() {
                     </div>
                     <div className="col-span-3 sm:col-span-1 space-y-1">
                       <Label className="text-xs text-gray-500">TVA %</Label>
-                      <Select
-                        value={item.tva_rate.toString()}
-                        onValueChange={(value) => updateItem(index, 'tva_rate', parseFloat(value))}
-                      >
+                      <Select value={item.tva_rate.toString()} onValueChange={(value) => updateItem(index, 'tva_rate', parseFloat(value))}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -335,13 +400,7 @@ export default function NewQuotePage() {
                       </Select>
                     </div>
                     <div className="col-span-1 flex items-center justify-end">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeItem(index)}
-                        disabled={items.length === 1}
-                        className="text-gray-400 hover:text-red-500"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => removeItem(index)} disabled={items.length === 1} className="text-gray-400 hover:text-red-500">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -387,12 +446,7 @@ export default function NewQuotePage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Validité</Label>
-                  <Input
-                    type="date"
-                    value={formData.valid_until}
-                    onChange={(e) => updateField('valid_until', e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
-                  />
+                  <Input type="date" value={formData.valid_until} onChange={(e) => updateField('valid_until', e.target.value)} min={new Date().toISOString().split('T')[0]} />
                 </div>
               </CardContent>
             </Card>
@@ -410,19 +464,13 @@ export default function NewQuotePage() {
                 <Separator />
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-semibold">Total TTC</span>
-                  <span className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(totals.total)}
-                  </span>
+                  <span className="text-2xl font-bold text-blue-600">{formatCurrency(totals.total)}</span>
                 </div>
               </CardContent>
             </Card>
 
             <div className="space-y-3">
-              <Button
-                className="w-full gradient-primary text-white"
-                onClick={() => handleSubmit(true)}
-                disabled={saving}
-              >
+              <Button className="w-full gradient-primary text-white" onClick={() => handleSubmit(true)} disabled={saving}>
                 {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -435,16 +483,33 @@ export default function NewQuotePage() {
                   </>
                 )}
               </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handleSubmit(false)}
-                disabled={saving}
-              >
+              <Button variant="outline" className="w-full" onClick={() => handleSubmit(false)} disabled={saving}>
                 <Save className="mr-2 h-4 w-4" />
                 Enregistrer en brouillon
               </Button>
             </div>
+
+            {quoteId && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button variant="outline" size="sm" className="w-full" onClick={previewPDF}>
+                    <Eye className="mr-2 h-4 w-4 text-blue-600" />
+                    Aperçu
+                  </Button>
+                  <Button variant="outline" size="sm" className="w-full" onClick={shareEmail}>
+                    <Mail className="mr-2 h-4 w-4 text-blue-500" />
+                    Email
+                  </Button>
+                  <Button variant="outline" size="sm" className="w-full" onClick={shareWhatsApp}>
+                    <MessageCircle className="mr-2 h-4 w-4 text-green-500" />
+                    WhatsApp
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
