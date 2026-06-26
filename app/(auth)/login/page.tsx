@@ -23,13 +23,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[LOGIN] signInWithPassword error:', {
+          message: error.message,
+          status: error.status,
+          code: (error as any).code,
+          name: error.name,
+          full: JSON.stringify(error),
+        });
+        throw error;
+      }
 
+      console.log('[LOGIN] success, user:', data.user?.id, 'email:', data.user?.email);
       toast.success('Connexion reussie');
       router.push('/dashboard');
     } catch (error: any) {

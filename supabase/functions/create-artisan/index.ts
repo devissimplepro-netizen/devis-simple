@@ -13,7 +13,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Use service role to bypass RLS and create users
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -28,7 +27,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Create auth user with service role (does NOT affect caller's session)
+    // Create auth user — also triggers handle_new_user which inserts a partial public.users row
     const { data: authData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -40,22 +39,28 @@ Deno.serve(async (req: Request) => {
 
     const userId = authData.user.id;
 
-    // Create public user profile
-    const { error: userError } = await supabaseAdmin.from("users").insert({
-      id: userId, email, full_name, phone, trade,
-    });
+    // UPDATE (not INSERT) public.users with the full profile data.
+    // handle_new_user trigger already inserted the row; we just fill in the missing fields.
+    const { error: userError } = await supabaseAdmin
+      .from("users")
+      .update({ full_name, phone, trade })
+      .eq("id", userId);
     if (userError) throw userError;
 
     // Create company
-    const { data: company, error: companyError } = await supabaseAdmin.from("companies").insert({
-      user_id: userId,
-      name: company_name || `${full_name} - ${trade}`,
-      siret: siret || null,
-      address: address || null,
-      city: city || null,
-      postal_code: postal_code || null,
-      logo_url: logo_url || null,
-    }).select().single();
+    const { data: company, error: companyError } = await supabaseAdmin
+      .from("companies")
+      .insert({
+        user_id: userId,
+        name: company_name || `${full_name} - ${trade}`,
+        siret: siret || null,
+        address: address || null,
+        city: city || null,
+        postal_code: postal_code || null,
+        logo_url: logo_url || null,
+      })
+      .select()
+      .single();
 
     if (companyError) throw companyError;
 
