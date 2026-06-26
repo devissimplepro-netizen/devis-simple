@@ -7,10 +7,9 @@ import { supabase } from '@/lib/supabase/client';
 import { Loader2, Shield, LogOut, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
-const ADMIN_EMAIL = 'mohaa-elamri@hotmail.com';
-
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
+  const [adminEmail, setAdminEmail] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -20,11 +19,20 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         router.replace('/admin');
         return;
       }
-      if (session.user.email?.toLowerCase() !== ADMIN_EMAIL) {
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (!userData?.is_admin) {
         await supabase.auth.signOut();
         router.replace('/admin');
         return;
       }
+
+      setAdminEmail(session.user.email ?? '');
       setChecking(false);
     };
     check();
@@ -85,7 +93,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       <div className="flex-1 min-w-0">
         <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
           <span className="text-sm text-gray-500">Connecté en tant qu'administrateur</span>
-          <span className="text-xs text-gray-400 font-mono">{ADMIN_EMAIL}</span>
+          <span className="text-xs text-gray-400 font-mono">{adminEmail}</span>
         </header>
         <main className="p-6">
           {children}

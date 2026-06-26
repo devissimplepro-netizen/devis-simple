@@ -9,8 +9,6 @@ import { supabase } from '@/lib/supabase/client';
 import { Loader2, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
-const ADMIN_EMAIL = 'mohaa-elamri@hotmail.com';
-
 export default function AdminPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,14 +19,16 @@ export default function AdminPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (email.trim().toLowerCase() !== ADMIN_EMAIL) {
-        throw new Error('Accès non autorisé');
-      }
-
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      if (data.user.email?.toLowerCase() !== ADMIN_EMAIL) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (!userData?.is_admin) {
         await supabase.auth.signOut();
         throw new Error('Accès non autorisé');
       }
@@ -57,7 +57,7 @@ export default function AdminPage() {
             <Input
               id="admin-email"
               type="email"
-              placeholder="admin@devis-simple.fr"
+              placeholder="admin@exemple.fr"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="h-12"
