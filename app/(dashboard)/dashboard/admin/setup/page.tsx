@@ -44,7 +44,7 @@ export default function AdminSetupPage() {
       if (error) throw error;
       setIsAdmin(true);
       toast.success('Vous êtes maintenant admin');
-      router.push('/dashboard/admin/candidatures');
+      router.push('/admin/candidatures');
     } catch (error: any) {
       toast.error(error.message || 'Erreur');
     } finally {

@@ -4,6 +4,21 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+
+async function callCreateArtisan(payload: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-artisan`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session?.access_token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Erreur serveur');
+  return json;
+}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -237,44 +252,18 @@ export default function AdminCandidaturesPage() {
 
       const password = generatePassword();
 
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      // Use edge function — preserves admin session (signUp would replace it)
+      await callCreateArtisan({
         email: candidature.email,
         password,
-      });
-
-      if (signUpError) throw signUpError;
-      if (!authData.user) throw new Error('Échec de la création du compte');
-
-      const { error: userError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        email: candidature.email,
         full_name: candidature.full_name,
         phone: candidature.phone,
         trade: candidature.trade,
+        company_name: candidature.company_name,
+        siret: candidature.siret,
+        logo_url: candidature.logo_url,
+        is_subscribed: false,
       });
-      if (userError) throw userError;
-
-      const { data: company } = await supabase
-        .from('companies')
-        .insert({
-          user_id: authData.user.id,
-          name: candidature.company_name || `${candidature.full_name} - ${candidature.trade}`,
-          siret: candidature.siret,
-          logo_url: candidature.logo_url,
-        })
-        .select()
-        .single();
-
-      if (company) {
-        await supabase.from('subscriptions').insert({
-          user_id: authData.user.id,
-          plan: 'pro',
-          billing_cycle: 'monthly',
-          status: 'trialing',
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-        });
-      }
 
       const { error: updateError } = await supabase
         .from('candidatures')
@@ -372,47 +361,14 @@ export default function AdminCandidaturesPage() {
 
       const password = generatePassword();
 
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: newEmail,
-        password,
+      // Use edge function — preserves admin session (signUp would replace it)
+      await callCreateArtisan({
+        email: newEmail, password, full_name: newFullName,
+        phone: newPhone, trade: newTrade,
+        company_name: newCompanyName, siret: newSiret,
+        address: newAddress, city: newCity, postal_code: newPostalCode,
+        logo_url: logoUrl, is_subscribed: newIsSubscribed,
       });
-      if (signUpError) throw signUpError;
-      if (!authData.user) throw new Error('Échec de la création du compte');
-
-      const { error: userError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        email: newEmail,
-        full_name: newFullName,
-        phone: newPhone,
-        trade: newTrade,
-        is_subscribed: newIsSubscribed,
-      });
-      if (userError) throw userError;
-
-      const { data: company } = await supabase
-        .from('companies')
-        .insert({
-          user_id: authData.user.id,
-          name: newCompanyName || `${newFullName} - ${newTrade}`,
-          siret: newSiret,
-          address: newAddress,
-          city: newCity,
-          postal_code: newPostalCode,
-          logo_url: logoUrl,
-        })
-        .select()
-        .single();
-
-      if (company) {
-        await supabase.from('subscriptions').insert({
-          user_id: authData.user.id,
-          plan: 'pro',
-          billing_cycle: 'monthly',
-          status: newIsSubscribed ? 'active' : 'trialing',
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + (newIsSubscribed ? 30 : 14) * 24 * 60 * 60 * 1000).toISOString(),
-        });
-      }
 
       setCreateDialog(false);
       setCreatedDialog({ email: newEmail, password });
