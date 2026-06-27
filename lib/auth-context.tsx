@@ -41,12 +41,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (!profile) {
-        setUser(null);
-        setIsAdmin(false);
-        setLoading(false);
-        return;
-      }
+     if (!profile) {
+  console.warn('Profile missing, using fallback user');
+
+  setUser({
+    id: authUser.id,
+    email: authUser.email!,
+    role: 'artisan',
+    full_name: null,
+    phone: null,
+    trade: null,
+    created_at: '',
+    updated_at: '',
+  });
+
+  setIsAdmin(false);
+}
 
       const userData: User = {
         id: authUser.id,
