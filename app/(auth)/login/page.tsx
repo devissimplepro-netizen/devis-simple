@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase/client';
+import { translateAuthError } from '@/lib/auth-errors';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from 'sonner';
@@ -29,21 +30,13 @@ export default function LoginPage() {
       });
 
       if (error) {
-        console.error('[LOGIN] signInWithPassword error:', {
-          message: error.message,
-          status: error.status,
-          code: (error as any).code,
-          name: error.name,
-          full: JSON.stringify(error),
-        });
         throw error;
       }
 
-      console.log('[LOGIN] success, user:', data.user?.id, 'email:', data.user?.email);
-      toast.success('Connexion reussie');
+      toast.success('Connexion réussie');
       router.push('/dashboard');
     } catch (error: any) {
-      toast.error(error.message || 'Erreur de connexion');
+      toast.error(translateAuthError(error.message));
     } finally {
       setLoading(false);
     }
