@@ -29,8 +29,26 @@ export default function LoginPage() {
         password,
       });
 
-      if (error) {
-        throw error;
+      if (error) throw error;
+
+      // Fetch role from profiles to redirect accordingly
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (profileError) throw new Error('Erreur lors de la récupération du profil');
+
+      if (!profile) {
+        await supabase.auth.signOut();
+        throw new Error('Profil introuvable, contactez l\'administrateur');
+      }
+
+      if (profile.role === 'admin') {
+        toast.success('Connexion réussie');
+        router.push('/admin/candidatures');
+        return;
       }
 
       toast.success('Connexion réussie');

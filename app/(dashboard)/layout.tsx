@@ -8,7 +8,7 @@ import { DashboardHeader } from '@/components/dashboard/header';
 import { Loader2 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -20,12 +20,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (isAdmin) {
+    // Admins should not access the artisan dashboard
+    if (user.role === 'admin') {
       router.replace('/admin/candidatures');
     }
-  }, [user, isAdmin, loading, router]);
+  }, [user, loading, router]);
 
-  if (loading || !user || isAdmin) {
+  if (loading || !user || user.role === 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />

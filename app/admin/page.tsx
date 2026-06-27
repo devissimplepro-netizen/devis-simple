@@ -23,13 +23,13 @@ export default function AdminPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      const { data: userData } = await supabase
-        .from('users')
-        .select('is_admin')
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
         .eq('id', data.user.id)
         .maybeSingle();
 
-      if (!userData?.is_admin) {
+      if (profile?.role !== 'admin') {
         await supabase.auth.signOut();
         throw new Error('Accès non autorisé');
       }

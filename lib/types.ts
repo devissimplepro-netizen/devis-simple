@@ -2,11 +2,25 @@ export type Plan = 'starter' | 'pro';
 export type BillingCycle = 'monthly' | 'yearly';
 export type QuoteStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'refused' | 'invoiced';
 export type InvoiceStatus = 'draft' | 'sent' | 'viewed' | 'paid' | 'late';
+export type UserRole = 'admin' | 'artisan';
+
+export interface Profile {
+  id: string;
+  role: UserRole;
+  full_name: string | null;
+  phone: string | null;
+  trade: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface User {
   id: string;
   email: string;
+  role: UserRole;
   full_name: string | null;
+  phone: string | null;
+  trade: string | null;
   created_at: string;
   updated_at: string;
 }

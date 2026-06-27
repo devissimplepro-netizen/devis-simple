@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import { User, Company, Subscription } from '@/lib/types';
 import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -26,21 +27,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const loadUserData = async (userId: string) => {
+  const loadUserData = async (authUser: SupabaseUser) => {
     try {
-      const { data: userData } = await supabase
-        .from('users')
+      const { data: profile, error } = await supabase
+        .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', authUser.id)
         .maybeSingle();
 
-      setUser(userData ?? null);
-      setIsAdmin(userData?.is_admin ?? false);
+      if (error) {
+        console.error('loadUserData profiles error:', error.message);
+        setLoading(false);
+        return;
+      }
 
-      if (userData) {
+      if (!profile) {
+        setUser(null);
+        setIsAdmin(false);
+        setLoading(false);
+        return;
+      }
+
+      const userData: User = {
+        id: authUser.id,
+        email: authUser.email!,
+        role: profile.role,
+        full_name: profile.full_name,
+        phone: profile.phone,
+        trade: profile.trade,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at,
+      };
+
+      setUser(userData);
+      setIsAdmin(profile.role === 'admin');
+
+      if (profile.role === 'artisan') {
         const [{ data: companyData }, { data: subData }] = await Promise.all([
-          supabase.from('companies').select('*').eq('user_id', userId).maybeSingle(),
-          supabase.from('subscriptions').select('*').eq('user_id', userId).maybeSingle(),
+          supabase.from('companies').select('*').eq('user_id', authUser.id).maybeSingle(),
+          supabase.from('subscriptions').select('*').eq('user_id', authUser.id).maybeSingle(),
         ]);
         setCompany(companyData ?? null);
         setSubscription(subData ?? null);
@@ -62,9 +87,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
-      const { data } = await supabase.from('users').select('*').eq('id', authUser.id).maybeSingle();
-      setUser(data ?? null);
-      setIsAdmin(data?.is_admin ?? false);
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+      if (profile) {
+        setUser({
+          id: authUser.id,
+          email: authUser.email!,
+          role: profile.role,
+          full_name: profile.full_name,
+          phone: profile.phone,
+          trade: profile.trade,
+          created_at: profile.created_at,
+          updated_at: profile.updated_at,
+        });
+        setIsAdmin(profile.role === 'admin');
+      }
     }
   };
 
@@ -82,12 +123,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Use onAuthStateChange exclusively — calling getUser() concurrently causes a deadlock
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user) {
-            await loadUserData(session.user.id);
+            await loadUserData(session.user);
           } else {
             clearUser();
             setLoading(false);
